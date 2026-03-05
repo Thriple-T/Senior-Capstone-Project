@@ -1,0 +1,46 @@
+The data is collected from 2 sources, one is from Writing9 which I have scraped with Selenium, and generated synthetic data from Gemini. All has task 2, general and academic task writing samples. All has around 300 rows of records for each source.
+
+Model Report
+
+Criterion: Task Achievement
+----------------------------------------
+  RMSE (Root Mean Squared Error) : 0.907 Bands
+  MAE  (Mean Absolute Error)     : 0.741 Bands
+  R²   (Explained Variance)      : 0.607
+  Human Agreement (≤ 0.5 diff)   : 38.5%
+
+Criterion: Coherence Cohesion
+----------------------------------------
+  RMSE (Root Mean Squared Error) : 0.932 Bands
+  MAE  (Mean Absolute Error)     : 0.715 Bands
+  R²   (Explained Variance)      : 0.607
+  Human Agreement (≤ 0.5 diff)   : 48.7%
+
+Criterion: Lexical Resource
+----------------------------------------
+  RMSE (Root Mean Squared Error) : 1.257 Bands
+  MAE  (Mean Absolute Error)     : 0.999 Bands
+  R²   (Explained Variance)      : 0.438
+  Human Agreement (≤ 0.5 diff)   : 33.3%
+
+Criterion: Grammar Range
+----------------------------------------
+  RMSE (Root Mean Squared Error) : 1.345 Bands
+  MAE  (Mean Absolute Error)     : 1.103 Bands
+  R²   (Explained Variance)      : 0.293
+  Human Agreement (≤ 0.5 diff)   : 19.7%
+
+
+The drop in performance on Grammar and Lexical Resource strongly suggests your model lacks the specific NLP features required to evaluate language mechanics. Here is how to fix that:
+
+Since we are using traditional ML, we need to feed it highly specific linguistic features:
+    For Grammar Range: Do not rely on raw text. Extract features using NLP libraries (like `spaCy` or `NLTK`). Count the number of dependent clauses, measure sentence length variance, and use a grammar-checking library (like `LanguageTool` API) to count the number of grammatical errors per 100 words.
+    For Lexical Resource: Calculate the Type-Token Ratio (unique words divided by total words) to measure vocabulary diversity. Measure how many words belong to the Academic Word List (AWL). Count spelling errors.
+    For Task Achievement: Use cosine similarity (via word embeddings) to measure how closely the essay's vocabulary aligns with the prompt's vocabulary.
+
+Need to shift to a pre-trained Transformer model is the industry standard for this task.
+Fine-tune a pre-trained model like BERT, RoBERTa, or DeBERTa on the dataset.
+Instead of training four separate models (or predicting them independently), train a single neural network with a shared base and four separate output heads. Human raters naturally let their impression of grammar influence their score for cohesion (the "halo effect"); a multi-task model mimics this and shares learned representations, usually boosting performance across all four criteria.
+
+Address Data Imbalance
+Need to oversample your minority classes (the very low and very high scores) or use a weighted loss function during training that heavily penalizes the model for missing the extreme scores.

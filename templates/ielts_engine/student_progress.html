@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Progress - {{ student.name }}{% endblock %}
+
+{% block content %}
+<div class="header-section" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+            <nav style="margin-bottom: 1rem;">
+                <a href="{% url 'dashboard' %}"
+                    style="color: var(--accent-gold); text-decoration: none; font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                    Back to Dashboard
+                </a>
+            </nav>
+            <h1>Student Performance Analytics</h1>
+            <p style="color: var(--text-muted);">Longitudinal progress tracking for <strong>{{ student.name }}</strong>
+            </p>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-size: 0.875rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">
+                Target Band</div>
+            <div style="font-size: 2.5rem; font-weight: 700; color: var(--accent-gold);">{{ student.target_band_score }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1" style="gap: 2rem;">
+    <!-- Large Progress Chart -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3>Score Progression</h3>
+            <div style="display: flex; gap: 1rem; font-size: 0.875rem;">
+                <span style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span
+                        style="width: 12px; height: 12px; background-color: var(--accent-gold); border-radius: 2px;"></span>
+                    Overall Band
+                </span>
+            </div>
+        </div>
+        <div style="height: 400px; width: 100%;">
+            <canvas id="progressChart"></canvas>
+        </div>
+    </div>
+
+    <!-- History Table -->
+    <div class="card">
+        <h3>Submission History</h3>
+        <div style="overflow-x: auto; margin-top: 1.5rem;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="text-align: left; border-bottom: 1px solid var(--border-color);">
+                        <th style="padding: 1rem; color: var(--text-muted); font-weight: 600;">Date</th>
+                        <th style="padding: 1rem; color: var(--text-muted); font-weight: 600;">Task Type</th>
+                        <th style="padding: 1rem; color: var(--text-muted); font-weight: 600;">Overall Band</th>
+                        <th style="padding: 1rem; color: var(--text-muted); font-weight: 600; text-align: right;">Action
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in progress_data %}
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 1rem;">{{ item.date }}</td>
+                        <td style="padding: 1rem;">Task {{ item.task }}</td>
+                        <td style="padding: 1rem;">
+                            <span
+                                class="badge {% if item.score >= student.target_band_score %}badge-good{% else %}badge-risk{% endif %}">
+                                {{ item.score }}
+                            </span>
+                        </td>
+                        <td style="padding: 1rem; text-align: right;">
+                            <a href="{% url 'evaluation_view' item.essay_id %}" class="btn btn-secondary"
+                                style="padding: 0.4rem 0.8rem; font-size: 0.875rem;">View Analysis</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="padding: 3rem; text-align: center; color: var(--text-muted);">
+                            No evaluation data found for this student.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const ctx = document.getElementById('progressChart').getContext('2d');
+
+        const data = {{ progress_data| safe
+    }};
+    const labels = data.map(item => item.date);
+    const scores = data.map(item => item.score);
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Overall Band',
+                data: scores,
+                borderColor: '#FFD700',
+                backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                borderWidth: 3,
+                pointBackgroundColor: '#FFD700',
+                pointRadius: 6,
+                pointHoverRadius: 8,
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    min: 0,
+                    max: 9,
+                    grid: { color: '#334155' },
+                    ticks: { color: '#94a3b8', stepSize: 0.5 }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8' }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    titleColor: '#FFD700',
+                    bodyColor: '#f1f5f9',
+                    borderColor: '#334155',
+                    borderWidth: 1,
+                    padding: 12,
+                    displayColors: false,
+                    callbacks: {
+                        label: function (context) {
+                            return `Band Score: ${context.parsed.y}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    });
+</script>
+{% endblock %}

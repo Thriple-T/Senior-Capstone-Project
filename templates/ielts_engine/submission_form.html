@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+
+{% block title %}Submit Essay - SayarDesk Intelligence{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+    <h1>Intelligence Analysis</h1>
+    <p style="color: var(--text-muted); margin-bottom: 2rem;">Submit a writing task for AI evaluation.</p>
+
+    <div class="card">
+        <form method="post" id="essayForm" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="grid grid-cols-2">
+                <div class="form-group">
+                    <label class="form-label" for="id_student_identifier">Student Name or ID</label>
+                    <input type="text" name="student_identifier" id="id_student_identifier" class="form-control"
+                        placeholder="Enter Student Name or ID..." required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="id_task_type">Task Type</label>
+                    <select name="task_type" class="form-control" id="id_task_type" required>
+                        <option value="1">Task 1 (Academic/General)</option>
+                        <option value="2">Task 2 (Essay)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="id_prompt_text">Prompt / Question</label>
+                <textarea name="prompt_text" id="id_prompt_text" class="form-control" style="min-height: 80px;" required
+                    placeholder="Enter the writing prompt here..."></textarea>
+            </div>
+
+            <div class="form-group"
+                style="padding: 1.5rem; border: 2px dashed var(--border-color); border-radius: 0.5rem; text-align: center; margin-bottom: 1.5rem; position: relative;"
+                id="fileUploadContainer">
+                <label for="id_uploaded_file" style="display: block; cursor: pointer; color: var(--text-muted);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 0.5rem;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <div style="font-weight: 500; font-size: 1rem; color: var(--text-main); margin-bottom: 0.25rem;">
+                        Upload Document</div>
+                    <div style="font-size: 0.875rem;">Support for .pdf, .doc, .docx</div>
+                </label>
+                {{ form.uploaded_file }}
+                <div id="fileName"
+                    style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--accent-gold); font-weight: 500;"></div>
+            </div>
+
+            <div
+                style="text-align: center; margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.875rem; display: flex; align-items: center; justify-content: center; gap: 1rem;">
+                <span style="flex: 1; height: 1px; background-color: var(--border-color);"></span>
+                OR WRITE MANUALLY
+                <span style="flex: 1; height: 1px; background-color: var(--border-color);"></span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;"
+                    for="id_extracted_text">
+                    Essay Content
+                    <button type="button" id="saveDraftBtn" class="btn btn-secondary"
+                        style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                        </svg>
+                        Save Draft
+                    </button>
+                </label>
+                <textarea name="extracted_text" id="id_extracted_text" class="form-control" required
+                    placeholder="Start writing the essay..."></textarea>
+                <small id="draftStatus"
+                    style="color: var(--accent-green); display: block; margin-top: 0.5rem; font-size: 0.8rem; height: 1.2rem;"></small>
+            </div>
+
+            <div class="form-group"
+                style="background-color: var(--bg-main); padding: 1rem; border-radius: 0.5rem; border: 1px dashed var(--accent-gold);">
+                <label class="form-label" for="id_scenario">Demonstration Scenario</label>
+                <select name="scenario" id="id_scenario" class="form-control">
+                    <option value="standard">Standard (Band 6.0) - Some minor errors</option>
+                    <option value="at_risk">At-Risk (Band 4.5) - Needs immediate support</option>
+                    <option value="high_performing">High-Performing (Band 8.0) - Advanced</option>
+                </select>
+                <small style="color: var(--text-muted); display: block; margin-top: 0.5rem;">For prototype purposes,
+                    select the mock AI outcome.</small>
+            </div>
+
+            <div style="text-align: right; margin-top: 2rem;">
+                <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem; font-size: 1rem;">Analyze
+                    Essay</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+    /* Hide the default file input visually but keep it accessible for clicking */
+    #id_uploaded_file {
+        opacity: 0;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+    }
+
+    #fileUploadContainer:hover {
+        border-color: var(--accent-gold);
+        background-color: var(--bg-card-hover);
+    }
+</style>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const essayField = document.getElementById('id_extracted_text');
+        const fileInput = document.getElementById('id_uploaded_file');
+        const fileNameDisplay = document.getElementById('fileName');
+        const saveDraftBtn = document.getElementById('saveDraftBtn');
+        const draftStatus = document.getElementById('draftStatus');
+
+        // Handle file selection
+        if (fileInput) {
+            fileInput.addEventListener('change', function () {
+                if (this.files && this.files.length > 0) {
+                    fileNameDisplay.textContent = 'Selected File: ' + this.files[0].name;
+                    essayField.required = false;
+                    essayField.placeholder = "File uploaded. Using extracted text.";
+                    essayField.disabled = true;
+                } else {
+                    fileNameDisplay.textContent = '';
+                    essayField.required = true;
+                    essayField.placeholder = "Start writing the essay...";
+                    essayField.disabled = false;
+                }
+            });
+        }
+
+        // Load draft if exists
+        const savedDraft = localStorage.getItem('sayardesk_essay_draft');
+        if (savedDraft && essayField) {
+            essayField.value = savedDraft;
+            draftStatus.textContent = 'Draft loaded from local storage.';
+            setTimeout(() => draftStatus.textContent = '', 3000);
+        }
+
+        if (saveDraftBtn) {
+            saveDraftBtn.addEventListener('click', function () {
+                localStorage.setItem('sayardesk_essay_draft', essayField.value);
+                draftStatus.textContent = 'Draft saved successfully.';
+                setTimeout(() => draftStatus.textContent = '', 3000);
+            });
+        }
+
+        // Auto save draft every 30 seconds
+        setInterval(function () {
+            if (essayField && essayField.value.trim().length > 0) {
+                localStorage.setItem('sayardesk_essay_draft', essayField.value);
+            }
+        }, 30000);
+
+        // Clear draft on successful submission
+        const form = document.getElementById('essayForm');
+        if (form) {
+            form.addEventListener('submit', function () {
+                localStorage.removeItem('sayardesk_essay_draft');
+                // Ensure disabled field value is sent if file was not used (though here we rely on hidden/file)
+                // Actually, if disabled, it might not send. We should enable it right before submit if needed, 
+                // but the backend handles 'uploaded_file' separately.
+                essayField.disabled = false;
+            });
+        }
+    });
+</script>
+{% endblock %}

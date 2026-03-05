@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - SayarDesk Intelligence{% endblock %}
+
+{% block content %}
+<div class="header-section" style="margin-bottom: 2rem;">
+    <h1>Overview</h1>
+    <p style="color: var(--text-muted);">Welcome back to SayarDesk Intelligence.</p>
+</div>
+
+<div class="grid grid-cols-2" style="margin-bottom: 2rem;">
+    <div class="card">
+        <h3>Class Mastery</h3>
+        <p style="color: var(--text-muted); font-size: 0.875rem;">Average Overall Band Score</p>
+        <div class="stat-value">{{ class_mastery|default:"--" }}</div>
+    </div>
+    <div class="card">
+        <h3>Support Needs</h3>
+        <p style="color: var(--text-muted); font-size: 0.875rem;">Students At-Risk (Score &lt; 6.0)</p>
+        <div style="margin-top: 1rem; max-height: 150px; overflow-y: auto;">
+            {% if support_needs %}
+            <ul style="list-style: none; padding: 0;">
+                {% for student in support_needs %}
+                <li
+                    style="padding: 0.5rem 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between;">
+                    <span>{{ student.name }}</span>
+                    <span class="badge badge-risk">At Risk</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p style="color: var(--accent-green); font-weight: 500;">No students currently flagged.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<h2>Recent Submissions</h2>
+<div class="card" style="padding: 0;">
+    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <thead>
+            <tr style="border-bottom: 1px solid var(--border-color); background-color: var(--bg-card-hover);">
+                <th style="padding: 1rem; font-weight: 600;">Student</th>
+                <th style="padding: 1rem; font-weight: 600;">Task Type</th>
+                <th style="padding: 1rem; font-weight: 600;">Date</th>
+                <th style="padding: 1rem; font-weight: 600;">Overall Band</th>
+                <th style="padding: 1rem; font-weight: 600;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ev in evaluations %}
+            <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 1rem;">
+                    <a href="{% url 'student_progress' ev.essay.student.id %}"
+                        style="color: var(--text-main); text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 0.5rem;">
+                        {{ ev.essay.student.name }}
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            style="color: var(--accent-gold); opacity: 0.7;">
+                            <polyline points="10 9 15 12 10 15"></polyline>
+                            <path d="M22 12h-6"></path>
+                            <circle cx="9" cy="12" r="1"></circle>
+                        </svg>
+                    </a>
+                </td>
+                <td style="padding: 1rem;">Task {{ ev.essay.task_type }}</td>
+                <td style="padding: 1rem; color: var(--text-muted);">{{ ev.essay.submission_date|date:"M d, Y" }}</td>
+                <td style="padding: 1rem;">
+                    {% if ev.overall_band %}
+                    <span class="badge {% if ev.overall_band >= 6.0 %}badge-good{% else %}badge-risk{% endif %}">
+                        {{ ev.overall_band }}
+                    </span>
+                    {% else %}
+                    --
+                    {% endif %}
+                </td>
+                <td style="padding: 1rem;">
+                    <a href="{% url 'evaluation_view' ev.essay.id %}" class="btn btn-secondary"
+                        style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">View</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-muted);">No submissions yet.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

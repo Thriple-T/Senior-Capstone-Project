@@ -1,0 +1,40 @@
+# --- Python & Environment ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+bin/
+lib/
+develop-eggs/
+dist/
+build/
+
+# --- Django Specific ---
+db.sqlite3
+db.sqlite3-journal
+*.log
+local_settings.py
+media/
+staticfiles/
+
+# --- ML & Data ---
+# Don't track large CSVs or pre-trained models locally
+*.csv
+*.h5
+*.pkl
+*.onnx
+models/trained_models/
+
+# --- Azure & Secrets ---
+.azure/
+.env
+secret.txt
+*.publishsettings
+
+# --- IDEs & OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,18 +1,26 @@
 import torch
 import numpy as np
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from advanced_model import IELTSMultiTaskModel, EssayDataset, extract_advanced_features # Assumes your file is in same folder
+from advanced_model import IELTSMultiTaskModel, EssayDataset, extract_advanced_features
 import pandas as pd
 from torch.utils.data import DataLoader
 from transformers import BertTokenizer
+import joblib
 
-def run_assessment(csv_path, model_path='D:\Projects\Senior-Capstone-Project\ML Models\sayardesk_model.pth'):
+def run_assessment(csv_path, model_path=r'D:\Projects\Senior-Capstone-Project\ML Models\sayardesk_model.pth'):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     df = pd.read_csv(csv_path).dropna()
     
     # Re-extract features (same as training)
     print("Extracting features for assessment...")
     feats = np.array([extract_advanced_features(row) for _, row in df.iterrows()])
+    
+    try:
+        scaler = joblib.load(r'D:\Projects\Senior-Capstone-Project\ML Models\ielts_scaler.pkl')
+        feats = scaler.transform(feats)
+    except FileNotFoundError:
+        print("Warning: ielts_scaler.pkl not found! Using raw features.")
+        
     targets = df[['Task_Achievement', 'Coherence_Cohesion', 'Lexical_Resource', 'Grammar_Range']].values
     
     tok = BertTokenizer.from_pretrained('bert-base-uncased')
@@ -23,6 +31,13 @@ def run_assessment(csv_path, model_path='D:\Projects\Senior-Capstone-Project\ML 
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
     
+    try:
+        xgb_model = joblib.load(r'D:\Projects\Senior-Capstone-Project\ML Models\hybrid_xgb_model.joblib')
+        has_xgb = True
+    except FileNotFoundError:
+        print("Warning: hybrid_xgb_model.joblib not found. The model will fall back to base PyTorch outputs.")
+        has_xgb = False
+    
     all_preds = []
     all_actuals = []
 
@@ -32,14 +47,17 @@ def run_assessment(csv_path, model_path='D:\Projects\Senior-Capstone-Project\ML 
             ids, mask = batch['ids'].to(device), batch['mask'].to(device)
             f, t = batch['feats'].to(device), batch['targets'].to(device)
             
-            preds = model(ids, mask, f)
-            # Stack the 4 outputs back into a [Batch, 4] shape
-            combined_preds = torch.stack([p.squeeze() for p in preds], dim=1)
+            (ta, cc, lr, gra), hybrid_feats = model(ids, mask, f)
             
-            all_preds.append(combined_preds.cpu().numpy())
+            if has_xgb:
+                xgb_preds = xgb_model.predict(hybrid_feats.cpu().numpy())
+                all_preds.append(xgb_preds)
+            else:
+                combined_preds = torch.stack([ta.squeeze(), cc.squeeze(), lr.squeeze(), gra.squeeze()], dim=1)
+                all_preds.append(combined_preds.cpu().numpy())
             all_actuals.append(t.cpu().numpy())
 
-    # Calculate Metrics
+    # Calculating Metrics
     y_pred = np.vstack(all_preds)
     y_true = np.vstack(all_actuals)
     criteria = ['Task Achievement', 'Coherence', 'Lexical', 'Grammar']
@@ -66,7 +84,7 @@ def run_assessment(csv_path, model_path='D:\Projects\Senior-Capstone-Project\ML 
 
 if __name__ == "__main__":
     # Use test dataset file here
-    results_df = run_assessment('D:\Projects\Senior-Capstone-Project\Datasets\Scraping Data\combined_ielts_essays_fixed.csv')
-    print("\n--- MODEL ASSESSMENT REPORT ---")
+    results_df = run_assessment(r'D:\Projects\Senior-Capstone-Project\Datasets\Scraping Data\combined_ielts_essays_fixed.csv')
+    print("\n MODEL ASSESSMENT REPORT")
     print(results_df.to_string(index=False))
     

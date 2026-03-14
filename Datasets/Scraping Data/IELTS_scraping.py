@@ -8,9 +8,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-# 1. Set up the Chrome Browser
 options = webdriver.ChromeOptions()
-# options.add_argument('--headless') # Uncomment to run in background
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
 target_url = "https://writing9.com/ielts-writing-samples"
@@ -59,22 +57,18 @@ def extract_score(label_pattern, text):
 for url in list(essay_links):
     try:
         driver.get(url)
-        # Wait for the main content
         WebDriverWait(driver, 7).until(
             EC.presence_of_element_located((By.TAG_NAME, 'h1'))
         )
         
-        # Usually the H1 title of the page
         question = driver.find_element(By.TAG_NAME, 'h1').text
-        
-        # Target the article body
         essay_element = driver.find_element(By.XPATH, '//div[@itemprop="articleBody"]')
         full_essay_text = essay_element.text
         
         # Scores: Get the text of the entire page to find scores anywhere
         page_text = driver.find_element(By.TAG_NAME, 'body').text
         
-        # We look for "Estimated Band", "Overall", or "Band Score" to get the total
+        # Look for "Estimated Band", "Overall", or "Band Score" to get the total
         overall = extract_score(r'(?:Estimated\s*Band|Overall|Band\s*Score)', page_text)
         
         # Individual Criteria
@@ -100,9 +94,6 @@ for url in list(essay_links):
     
     time.sleep(1)
 
-#Save to CSV
 df = pd.DataFrame(scraped_data)
 df.to_csv("ielts_task2.csv", index=False, encoding='utf-8-sig')
-
-print("\nSuccess!")
 driver.quit()

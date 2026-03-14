@@ -80,21 +80,11 @@
                     style="color: var(--accent-green); display: block; margin-top: 0.5rem; font-size: 0.8rem; height: 1.2rem;"></small>
             </div>
 
-            <div class="form-group"
-                style="background-color: var(--bg-main); padding: 1rem; border-radius: 0.5rem; border: 1px dashed var(--accent-gold);">
-                <label class="form-label" for="id_scenario">Demonstration Scenario</label>
-                <select name="scenario" id="id_scenario" class="form-control">
-                    <option value="standard">Standard (Band 6.0) - Some minor errors</option>
-                    <option value="at_risk">At-Risk (Band 4.5) - Needs immediate support</option>
-                    <option value="high_performing">High-Performing (Band 8.0) - Advanced</option>
-                </select>
-                <small style="color: var(--text-muted); display: block; margin-top: 0.5rem;">For prototype purposes,
-                    select the mock AI outcome.</small>
-            </div>
-
             <div style="text-align: right; margin-top: 2rem;">
-                <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem; font-size: 1rem;">Analyze
-                    Essay</button>
+                <button type="submit" id="analyzeBtn" class="btn btn-primary" style="padding: 0.75rem 2rem; font-size: 1rem; position: relative; display: inline-flex; align-items: center; justify-content: center;">
+                    <span id="analyzeBtnText">Analyze Essay</span>
+                    <span id="analyzeBtnSpinner" style="display: none; margin-left: 10px; width: 1.2rem; height: 1.2rem; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite;"></span>
+                </button>
             </div>
         </form>
     </div>
@@ -117,6 +107,10 @@
     #fileUploadContainer:hover {
         border-color: var(--accent-gold);
         background-color: var(--bg-card-hover);
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 </style>
 <script>
@@ -167,15 +161,25 @@
             }
         }, 30000);
 
-        // Clear draft on successful submission
+        // Clear draft on successful submission and show loading
         const form = document.getElementById('essayForm');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const analyzeBtnText = document.getElementById('analyzeBtnText');
+        const analyzeBtnSpinner = document.getElementById('analyzeBtnSpinner');
+
         if (form) {
             form.addEventListener('submit', function () {
                 localStorage.removeItem('sayardesk_essay_draft');
-                // Ensure disabled field value is sent if file was not used (though here we rely on hidden/file)
-                // Actually, if disabled, it might not send. We should enable it right before submit if needed, 
-                // but the backend handles 'uploaded_file' separately.
                 essayField.disabled = false;
+                
+                // Show loading state
+                if (analyzeBtn && analyzeBtnText && analyzeBtnSpinner) {
+                    analyzeBtn.disabled = true;
+                    analyzeBtn.style.opacity = '0.7';
+                    analyzeBtn.style.cursor = 'not-allowed';
+                    analyzeBtnText.textContent = 'Evaluating...';
+                    analyzeBtnSpinner.style.display = 'inline-block';
+                }
             });
         }
     });

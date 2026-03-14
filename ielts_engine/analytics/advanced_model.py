@@ -11,6 +11,9 @@ from spellchecker import SpellChecker
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.multioutput import MultiOutputRegressor
+from xgboost import XGBRegressor
+import joblib
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -26,7 +29,7 @@ except:
     nlp = spacy.load("en_core_web_sm")
 
 spell = SpellChecker()
-sim_model = SentenceTransformer('all-MiniLM-L6-v2')
+sim_model = SentenceTransformer('all-mpnet-base-v2')
 
 def extract_advanced_features(row):
     essay = str(row.get('Essay_Text', ''))
@@ -71,10 +74,10 @@ class IELTSMultiTaskModel(nn.Module):
         out = self.bert(ids, attention_mask=mask)
         pooled = self.drop(out.pooler_output)
         combined = torch.cat((pooled, feats), dim=1)
-        return self.ta_head(combined), self.cc_head(combined), \
-               self.lr_head(combined), self.gra_head(combined)
+        return (self.ta_head(combined), self.cc_head(combined), \
+               self.lr_head(combined), self.gra_head(combined)), combined
 
-# Custom Weighted Loss
+# Customized Weighted Loss
 def weighted_loss(preds, targets):
     # Penalize errors on extreme scores more heavily
     weights = torch.ones_like(targets)
@@ -91,7 +94,7 @@ class EssayDataset(Dataset):
     def __len__(self): return len(self.texts)
 
     def __getitem__(self, i):
-    # Use the tokenizer directly (this is the standard way)
+    # Use the tokenizer directly (this is the standard way according what I learnt so far, maybe change later???)
         enc = self.tokenizer(
             str(self.texts[i]), 
             max_length=512, 
@@ -106,7 +109,7 @@ class EssayDataset(Dataset):
             'targets': torch.tensor(self.targets[i], dtype=torch.float)
         }
 
-# Training Pipeline
+# Pipeline
 def run_pipeline():
     print("Reading data...")
     df1 = pd.read_csv('D:\Projects\Senior-Capstone-Project\Datasets\Scraping Data\combined_ielts_essays_fixed.csv')
@@ -114,13 +117,15 @@ def run_pipeline():
     df = pd.concat([df1, df2]).dropna(subset=['Essay_Text', 'Question', 'Task_Achievement', 'Coherence_Cohesion', 'Lexical_Resource', 'Grammar_Range'])
     
     print("Processing linguistic features...")
-    # Generate features and ensure they are all the same length
+
     feature_list = df.apply(extract_advanced_features, axis=1).tolist()
     feats = np.array(feature_list)
     
-    # Scale features (Essential for Neural Networks)
+    # Scale features for Neural Networks
     scaler = StandardScaler()
     feats = scaler.fit_transform(feats)
+    joblib.dump(scaler, 'ielts_scaler.pkl')
+    print("Scaler saved as ielts_scaler.pkl")
     
     targets = df[['Task_Achievement', 'Coherence_Cohesion', 'Lexical_Resource', 'Grammar_Range']].values
     
@@ -132,11 +137,12 @@ def run_pipeline():
     train_loader = DataLoader(EssayDataset(train_txt, train_f, train_y, tok), batch_size=8, shuffle=True)
     
     model = IELTSMultiTaskModel(n_extra_features=feats.shape[1]).to(device)
-    opt = AdamW(model.parameters(), lr=2e-5)
+    opt = AdamW(model.parameters(), lr=1e-5)
+    loss_fn = nn.MSELoss()
     
     print("Starting training...")
     model.train()
-    for epoch in range(3):
+    for epoch in range(5):
         epoch_loss = 0
         for batch in train_loader:
             opt.zero_grad()
@@ -145,12 +151,12 @@ def run_pipeline():
             f = batch['feats'].to(device)
             t = batch['targets'].to(device)
             
-            ta, cc, lr, gra = model(ids, mask, f)
+            (ta, cc, lr, gra), _ = model(ids, mask, f)
             
-            loss = weighted_loss(ta.squeeze(), t[:, 0]) + \
-                   weighted_loss(cc.squeeze(), t[:, 1]) + \
-                   weighted_loss(lr.squeeze(), t[:, 2]) + \
-                   weighted_loss(gra.squeeze(), t[:, 3])
+            loss = loss_fn(ta.squeeze(), t[:, 0]) + \
+                   loss_fn(cc.squeeze(), t[:, 1]) + \
+                   loss_fn(lr.squeeze(), t[:, 2]) + \
+                   loss_fn(gra.squeeze(), t[:, 3])
             
             loss.backward()
             opt.step()
@@ -160,6 +166,36 @@ def run_pipeline():
 
     torch.save(model.state_dict(), 'sayardesk_model.pth')
     print("Model saved as sayardesk_model.pth")
+    
+    # Hybrid Stage: BERT + XGBoost
+    print("\nExtracting 773-dim hybrid features for XGBoost...")
+    model.eval()
+    all_hybrid_features = []
+    all_targets = []
+    
+    with torch.no_grad():
+        for batch in train_loader:
+            ids = batch['ids'].to(device)
+            mask = batch['mask'].to(device)
+            f = batch['feats'].to(device)
+            t = batch['targets']
+            
+            _, hybrid_feats = model(ids, mask, f)
+            all_hybrid_features.append(hybrid_feats.cpu().numpy())
+            all_targets.append(t.numpy())
+            
+    X_train_xgb = np.vstack(all_hybrid_features)
+    y_train_xgb = np.vstack(all_targets)
+    
+    print(f"Hybrid feature shape: {X_train_xgb.shape} (Expected: N x 773)")
+    
+    print("Training Hybrid XGBoost Model...")
+    xgb_base = XGBRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, random_state=42)
+    multi_xgb = MultiOutputRegressor(xgb_base)
+    multi_xgb.fit(X_train_xgb, y_train_xgb)
+    
+    joblib.dump(multi_xgb, 'hybrid_xgb_model.joblib')
+    print("Hybrid XGBoost Model saved as hybrid_xgb_model.joblib")
 
 if __name__ == "__main__":
     run_pipeline()

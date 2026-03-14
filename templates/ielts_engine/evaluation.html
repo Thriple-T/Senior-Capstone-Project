@@ -44,9 +44,7 @@
             </button>
         </div>
 
-        <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.5rem;">
-            Hover over highlighted text for XAI insights (mocked).
-        </p>
+
 
         <!-- Override Form (Hidden by default) -->
         <div id="overrideFormContainer"
@@ -96,24 +94,8 @@
             style="background-color: var(--bg-main); padding: 1.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
             {{ essay.extracted_text }}</div>
 
-        <div style="margin-top: 1.5rem;">
-            <h4>Identified Areas of Focus</h4>
-            <ul style="list-style: none; margin-top: 0.5rem; padding: 0;">
-                {% for err in errors %}
-                <li
-                    style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.5rem; margin-bottom: 0.5rem; background-color: var(--bg-main);">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                        <strong
-                            style="text-transform: capitalize; color: {% if err.type == 'grammar' %}var(--accent-red){% else %}var(--accent-gold){% endif %};">{{
-                            err.type }}</strong>
-                        <span class="badge {% if err.severity == 'high' %}badge-risk{% else %}badge-good{% endif %}">{{
-                            err.severity }} severity</span>
-                    </div>
-                    <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0;">{{ err.text }}</p>
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
+        <div class="essay-text" id="highlightedEssay"
+            style="background-color: var(--bg-main); padding: 1.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color); white-space: pre-wrap;">{{ essay.extracted_text }}</div>
     </div>
 
     <!-- Right Side: Analytics Radar & Scores -->
@@ -211,24 +193,6 @@
             });
         }
 
-        // Mock highlighting
-        const essayContainer = document.getElementById('highlightedEssay');
-        if (essayContainer) {
-            let text = essayContainer.innerHTML;
-
-            {% for err in errors %}
-            {% if err.type == 'vocabulary' %}
-            text = text.replace(/good|bad|very|thing|stuff/gi, match => `<span class="highlight vocabulary" title="{{ err.text }}">${match}</span>`);
-            {% endif %}
-            {% if err.type == 'grammar' %}
-            text = text.replace(/is are|do does|have has|I is|he are/gi, match => `<span class="highlight grammar" title="{{ err.text }}">${match}</span>`);
-            text = text.replace(/\s(was|were)\s/i, match => `<span class="highlight grammar" title="{{ err.text }}">${match}</span>`);
-            {% endif %}
-            {% endfor %}
-
-            essayContainer.innerHTML = text;
-        }
-
         // Radar Chart
         const ctx = document.getElementById('radarChart').getContext('2d');
         new Chart(ctx, {
@@ -238,17 +202,17 @@
                 datasets: [{
                     label: 'Scores',
                     data: [
-                        {{ evaluation.task_achievement |default: 0 }},
-                {{ evaluation.coherence_cohesion |default: 0 }},
-                        {{ evaluation.lexical_resource |default: 0 }},
-        {{ evaluation.grammar_accuracy |default: 0 }}
+                        {{ evaluation.task_achievement|default:0 }},
+                        {{ evaluation.coherence_cohesion|default:0 }},
+                        {{ evaluation.lexical_resource|default:0 }},
+                        {{ evaluation.grammar_accuracy|default:0 }}
                     ],
-        backgroundColor: 'rgba(255, 215, 0, 0.2)',
-        borderColor: '#FFD700',
-        pointBackgroundColor: '#FFD700',
-        pointBorderColor: '#fff',
-        pointHoverBackgroundColor: '#fff',
-        pointHoverBorderColor: '#FFD700'
+                    backgroundColor: 'rgba(255, 215, 0, 0.2)',
+                    borderColor: '#FFD700',
+                    pointBackgroundColor: '#FFD700',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: '#FFD700'
                 }]
             },
         options: {

@@ -48,7 +48,6 @@ def extract_handcrafted_features(text):
 
 def engineer_features(df):
     print("Engineering Handcrafted Linguistic Features...")
-    # Apply handcrafted feature extraction
     handcrafted = df['Essay_Text'].apply(extract_handcrafted_features)
     hc_features_df = pd.DataFrame(handcrafted.tolist(), columns=['Word_Count', 'TTR', 'Avg_Sentence_Length'])
     
@@ -80,6 +79,7 @@ def train_evaluate_save_models(X, df, targets):
         
         # Configure Lightweight XGBoost Regressor
         # max_depth=3 prevents overfitting on small datasets
+        
         xgb_model = xgb.XGBRegressor(
             n_estimators=100, 
             learning_rate=0.1, 

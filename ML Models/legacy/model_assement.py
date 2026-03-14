@@ -4,7 +4,6 @@ import numpy as np
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 
-# Import the data preparation functions directly from pipeline.py
 from pipeline import load_and_clean_data, engineer_features
 
 def evaluate_models(file1, file2, model_path):
@@ -17,7 +16,6 @@ def evaluate_models(file1, file2, model_path):
         print(f"Error processing data: {e}")
         return
     
-    # Split exactly as in the training script (random_state=42) to isolate the test set
     _, X_test, _, indices_test = train_test_split(
         X, df.index, test_size=0.2, random_state=42
     )
@@ -30,10 +28,9 @@ def evaluate_models(file1, file2, model_path):
         return
 
     print("\n" + "="*50)
-    print(" SAYARDESK MODEL ACCURACY REPORT ")
+    print(" SayarDesk Model Accuracy Report ")
     print("="*50)
     
-    # Evaluate each target
     for target in targets:
         y_test = df.loc[indices_test, target]
         model = models[target]

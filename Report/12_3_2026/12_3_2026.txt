@@ -1,0 +1,26 @@
+Root Cause Analysis: Why is the model performing terribly?
+I have identified the underlying cause of the negative $R^2$ scores 
+(performing worse than a random guess). 
+It is a classic machine learning pitfall related to Ensemble Stacking Leakage and 
+Catastrophic Overfitting.
+
+The Flaw in the Current Pipeline
+Currently, in advanced_model.py, the code trains the 
+IELTSMultiTaskModel (a huge 110-million parameter BERT model + custom heads) 
+on the train_loader for 5 epochs. 
+Since there are only ~468 training samples, 
+this massive neural net inevitably memorizes (overfits) the training data.
+
+Then, the script passes the identical training data back into this 
+perfectly overfitted neural net to extract the 773-dimensional features. 
+You then train the XGBoost model on these extracted features.
+
+Because the PyTorch model has memorized the training set, 
+the extracted features are essentially "cheat codes" that correlate perfectly with 
+the target scores. 
+XGBoost latches onto these artificial correlations. 
+However, during the evaluation on the test set (which the PyTorch model has never seen),
+the PyTorch model outputs completely different, non-memorized, 
+uncalibrated representations. The XGBoost model is utterly blindsided 
+by these unknown distributions and predicts garbage—resulting in negative $R^2$ scores.
+

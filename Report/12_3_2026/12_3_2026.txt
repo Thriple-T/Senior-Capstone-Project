@@ -24,3 +24,15 @@ the PyTorch model outputs completely different, non-memorized,
 uncalibrated representations. The XGBoost model is utterly blindsided 
 by these unknown distributions and predicts garbage—resulting in negative $R^2$ scores.
 
+After changing the BERT model (from all-MiniLM-L6-v2 to all-mpnet-base-v2), and fixing the StandardScalar data leakage issues, this is the current model score.
+
+--- MODEL ASSESSMENT REPORT ---
+        Criteria   MAE  RMSE    R2 Within 0.5 Band (%)
+Task Achievement 0.299 0.451 0.908               90.7%
+       Coherence 0.342 0.554 0.850               89.0%
+         Lexical 0.417 0.658 0.872               88.7%
+         Grammar 0.479 0.741 0.830               83.0%
+
+An absolutely incredible improvement!
+
+

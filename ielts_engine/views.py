@@ -1,8 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Essay, Evaluation, Student
 from .forms import EssaySubmissionForm
-from .analytics.master_predict import predict_ensemble
 import io
+import json
 import pypdf
 from docx import Document
 
@@ -84,6 +84,7 @@ def submit_essay(request):
             
             # Create AI Evaluation using the REAL AI Ensemble Platform
             try:
+                from .analytics.master_predict import predict_ensemble
                 # The user form doesn't seem to have a prompt input yet, default to a Task 2 generic string 
                 # if prompt_text is empty, otherwise use the saved prompt_text 
                 engine_prompt = essay.prompt_text if essay.prompt_text else "Write an essay discussing your opinion on this topic."
@@ -98,7 +99,8 @@ def submit_essay(request):
                     lexical_resource=results['ensemble_scores']['Lexical_Resource'],
                     grammar_accuracy=results['ensemble_scores']['Grammar_Range'],
                     overall_band=results['ensemble_scores']['Overall_Band'],
-                    feedback_comments=results['llm_scores']['feedback_summary']
+                    feedback_comments=results['llm_scores']['feedback_summary'],
+                    shap_data=results.get('shap_data', [])
                 )
             except Exception as e:
                 # Fallback safeguard in case AI pipeline crashes
@@ -130,6 +132,7 @@ def evaluation_view(request, essay_id):
         'ai_eval': ai_eval,
         'teacher_eval': teacher_eval,
         'evaluation': evaluation,  # Current active one
+        'shap_data_json': json.dumps(ai_eval.shap_data) if ai_eval and ai_eval.shap_data else "[]",
         'errors': [], # The real evaluator currently does not return specific char-level error positions.
     }
     return render(request, 'ielts_engine/evaluation.html', context)
@@ -167,7 +170,7 @@ def student_progress(request, student_id):
         eval = essay.evaluations.filter(evaluator_type='TEACHER').first() or \
                essay.evaluations.filter(evaluator_type='AI').first()
         
-        if eval:
+        if eval and eval.overall_band is not None:
             progress_data.append({
                 'date': essay.submission_date.strftime('%Y-%m-%d'),
                 'score': float(eval.overall_band),
@@ -178,5 +181,6 @@ def student_progress(request, student_id):
     context = {
         'student': student,
         'progress_data': progress_data,
+        'progress_data_json': json.dumps(progress_data),
     }
     return render(request, 'ielts_engine/student_progress.html', context)

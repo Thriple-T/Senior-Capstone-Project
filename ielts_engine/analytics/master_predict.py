@@ -116,6 +116,58 @@ def predict_ensemble(essay_text, prompt_text,
     xgb_model = joblib.load(xgb_model_path)
     hybrid_preds = xgb_model.predict(hybrid_vector)[0]
     
+    # --- SHAP Explainability ---
+    shap_summary = []
+    try:
+        import shap
+        
+        feature_names = ["Semantic Meaning", "Sentence Variance", "Dependent Clauses", 
+                         "Lexical Diversity (TTR)", "Misspelled Ratio", "Prompt Similarity"]
+                         
+        if hasattr(xgb_model, 'estimators_'):
+            # MultiOutputRegressor: extract from each underlying estimator and average
+            all_shap_values = []
+            for estimator in xgb_model.estimators_:
+                explainer = shap.TreeExplainer(estimator)
+                all_shap_values.append(explainer.shap_values(hybrid_vector))
+            
+            # Average the SHAP values across all 4 estimators
+            # shap_values from each estimator is usually (1, 773)
+            # all_shap_values will be shape (4, 1, 773)
+            avg_shap = np.mean(all_shap_values, axis=0) # shape (1, 773)
+            
+            if len(avg_shap.shape) == 3:
+                sv_signed = avg_shap[0].mean(axis=1)
+            else:
+                sv_signed = avg_shap[0]
+        else:
+            explainer = shap.TreeExplainer(xgb_model)
+            shap_values = explainer.shap_values(hybrid_vector)
+            
+            if isinstance(shap_values, list):
+                sv_signed = np.array(shap_values).mean(axis=0)[0]
+            elif len(shap_values.shape) == 3:
+                sv_signed = shap_values[0].mean(axis=1)
+            else:
+                sv_signed = shap_values[0]
+            
+        bert_val = float(np.sum(sv_signed[:768]))
+        adv_vals = [float(x) for x in sv_signed[768:]]
+        all_vals = [bert_val] + adv_vals
+        
+        for name, val in zip(feature_names, all_vals):
+            shap_summary.append({
+                "feature": name,
+                "impact": val,
+                "type": "positive" if val >= 0 else "negative",
+                "abs_impact": abs(val)
+            })
+            
+        shap_summary.sort(key=lambda x: x["abs_impact"], reverse=True)
+        shap_summary = shap_summary[:5]
+    except Exception as e:
+        print(f"SHAP Error: {e}")
+
     hybrid_scores = {
         "Task_Achievement": hybrid_preds[0],
         "Coherence_Cohesion": hybrid_preds[1],
@@ -170,7 +222,8 @@ def predict_ensemble(essay_text, prompt_text,
     return {
         "hybrid_scores": hybrid_scores,
         "llm_scores": llm_scores_dict,
-        "ensemble_scores": ensemble_scores
+        "ensemble_scores": ensemble_scores,
+        "shap_data": shap_summary
     }
 
 if __name__ == "__main__":

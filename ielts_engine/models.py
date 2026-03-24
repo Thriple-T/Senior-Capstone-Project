@@ -51,6 +51,7 @@ class Evaluation(models.Model):
     overall_band = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
     
     feedback_comments = models.TextField(blank=True, null=True)
+    shap_data = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def calculate_overall(self):

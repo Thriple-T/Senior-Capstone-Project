@@ -24,8 +24,7 @@
         <div
             style="font-size: 0.875rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">
             Overall Band</div>
-        <div style="font-size: 4rem; font-weight: 700; color: var(--accent-gold); line-height: 1;">{{
-            evaluation.overall_band }}</div>
+        <div style="font-size: 4rem; font-weight: 700; color: var(--accent-gold); line-height: 1;">{{ evaluation.overall_band }}</div>
     </div>
 </div>
 
@@ -91,11 +90,8 @@
         </div>
 
         <div class="essay-text" id="highlightedEssay"
-            style="background-color: var(--bg-main); padding: 1.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+            style="background-color: var(--bg-main); padding: 1.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color); white-space: pre-wrap;">
             {{ essay.extracted_text }}</div>
-
-        <div class="essay-text" id="highlightedEssay"
-            style="background-color: var(--bg-main); padding: 1.5rem; border-radius: 0.5rem; border: 1px solid var(--border-color); white-space: pre-wrap;">{{ essay.extracted_text }}</div>
     </div>
 
     <!-- Right Side: Analytics Radar & Scores -->
@@ -145,8 +141,7 @@
                                 sentences.</span>
                         </span>
                     </span>
-                    <strong style="font-size: 1.25rem;">{{ evaluation.grammar_accuracy|default:"0.0"
-                        }}</strong>
+                    <strong style="font-size: 1.25rem;">{{ evaluation.grammar_accuracy|default:"0.0" }}</strong>
                 </div>
 
                 {% if teacher_eval.feedback_comments %}
@@ -159,8 +154,27 @@
                         teacher_eval.feedback_comments }}"</p>
                 </div>
                 {% endif %}
+
+                {% if ai_eval.feedback_comments %}
+                <div
+                    style="margin-top: 1.5rem; padding: 1rem; background-color: rgba(59, 130, 246, 0.05); border-left: 3px solid #3b82f6; border-radius: 0 0.5rem 0.5rem 0;">
+                    <h4 style="font-size: 0.875rem; color: #3b82f6; text-transform: uppercase; margin-bottom: 0.5rem;">
+                        Language Model (AI) Feedback</h4>
+                    <p style="font-size: 0.95rem; color: var(--text-main); line-height: 1.6;">{{ ai_eval.feedback_comments|linebreaksbr }}</p>
+                </div>
+                {% endif %}
             </div>
         </div>
+        {% if shap_data_json and shap_data_json != "[]" %}
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <h3>AI Explainability (SHAP)</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Top features impacting this
+                essay's score</p>
+            <div class="chart-container" style="height: 250px;">
+                <canvas id="shapChart"></canvas>
+            </div>
+        </div>
+        {% endif %}
 
         <div class="card">
             <h3>Student Profile</h3>
@@ -207,12 +221,12 @@
                         {{ evaluation.lexical_resource|default:0 }},
                         {{ evaluation.grammar_accuracy|default:0 }}
                     ],
-                    backgroundColor: 'rgba(255, 215, 0, 0.2)',
-                    borderColor: '#FFD700',
-                    pointBackgroundColor: '#FFD700',
-                    pointBorderColor: '#fff',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: '#FFD700'
+        backgroundColor: 'rgba(255, 215, 0, 0.2)',
+        borderColor: '#FFD700',
+        pointBackgroundColor: '#FFD700',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: '#FFD700'
                 }]
             },
         options: {
@@ -240,6 +254,60 @@
         }
     }
         });
+
+    // SHAP Explainability Chart
+    const shapDataRaw = {{ shap_data_json|safe }};
+    if (shapDataRaw && shapDataRaw.length > 0) {
+        const shapCtx = document.getElementById('shapChart');
+        if (shapCtx) {
+            const ctx2d = shapCtx.getContext('2d');
+            const shapLabels = shapDataRaw.map(d => d.feature);
+            const shapValues = shapDataRaw.map(d => d.impact);
+            const shapColors = shapDataRaw.map(d => d.type === 'positive' ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)');
+            const shapBorderColors = shapDataRaw.map(d => d.type === 'positive' ? '#22c55e' : '#ef4444');
+
+            new Chart(ctx2d, {
+                type: 'bar',
+                data: {
+                    labels: shapLabels,
+                    datasets: [{
+                        label: 'Score Impact',
+                        data: shapValues,
+                        backgroundColor: shapColors,
+                        borderColor: shapBorderColors,
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // horizontal bar chart
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    let val = context.raw;
+                                    return (val > 0 ? '+' : '') + val.toFixed(3);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { color: '#e2e8f0', font: { family: "'Inter', sans-serif", size: 11 } }
+                        }
+                    }
+                }
+            });
+        }
+    }
     });
 </script>
 {% endblock %}

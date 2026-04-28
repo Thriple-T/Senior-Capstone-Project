@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 # Used Hugging Face Serverless Inference API
 base_url = "https://router.huggingface.co/v1"
 # Ensure any user has HF_TOKEN set in their environment variables to avoid hardcoding sensitive information
-api_key = os.environ.get("HF_TOKEN", "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")
+api_key = os.environ.get("HF_TOKEN", "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")
 
 if not api_key:
     print("[WARNING] HF_TOKEN environment variable is missing. LLM grading will fail.")

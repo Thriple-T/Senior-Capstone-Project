@@ -25,3 +25,4 @@ xgboost==3.2.0
 joblib==1.5.3
 pyspellchecker==0.9.0
 shap==0.44.0
+textstat==0.7.3

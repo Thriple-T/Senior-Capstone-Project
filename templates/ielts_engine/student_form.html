@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - SayarDesk Intelligence{% endblock %}
+
+{% block content %}
+<div class="header-section" style="margin-bottom: 2rem;">
+    <nav style="margin-bottom: 1rem;">
+        <a href="{% url 'student_list' %}"
+            style="color: var(--accent-gold); text-decoration: none; font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Back to Student List
+        </a>
+    </nav>
+    <h1>{{ title }}</h1>
+    {% if student %}
+    <p style="color: var(--text-muted);">
+        Student ID: <span
+            style="font-family: monospace; font-weight: 600; color: var(--accent-gold);">{{ student.student_id }}</span>
+        &middot; Enrolled {{ student.enrollment_date|date:"M d, Y" }}
+    </p>
+    {% else %}
+    <p style="color: var(--text-muted);">A unique Student ID will be automatically generated.</p>
+    {% endif %}
+</div>
+
+<div class="card" style="max-width: 640px;">
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% for field in form %}
+        <div class="form-group">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">{{ field.help_text }}</p>
+            {% endif %}
+            {% if field.errors %}
+            <ul style="list-style: none; padding: 0; margin-top: 0.25rem;">
+                {% for error in field.errors %}
+                <li style="color: var(--accent-red); font-size: 0.85rem;">{{ error }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <div style="display: flex; gap: 0.75rem; margin-top: 2rem;">
+            <button type="submit" class="btn btn-primary" style="padding: 0.6rem 1.5rem;">{{ submit_label }}</button>
+            <a href="{% url 'student_list' %}" class="btn btn-secondary" style="padding: 0.6rem 1.5rem;">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

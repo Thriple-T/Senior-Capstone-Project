@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from transformers import BertTokenizer
 import joblib
 
-def run_assessment(csv_path, model_path=r'D:\Projects\Senior-Capstone-Project\ML Models\sayardesk_model.pth'):
+def run_assessment(csv_path, model_path=r'D:\Projects\Senior-Capstone-Project\sayardesk_model.pth'):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     df = pd.read_csv(csv_path).dropna()
     
@@ -16,7 +16,7 @@ def run_assessment(csv_path, model_path=r'D:\Projects\Senior-Capstone-Project\ML
     feats = np.array([extract_advanced_features(row) for _, row in df.iterrows()])
     
     try:
-        scaler = joblib.load(r'D:\Projects\Senior-Capstone-Project\ML Models\ielts_scaler.pkl')
+        scaler = joblib.load(r'D:\Projects\Senior-Capstone-Project\ielts_scaler.pkl')
         feats = scaler.transform(feats)
     except FileNotFoundError:
         print("Warning: ielts_scaler.pkl not found! Using raw features.")
@@ -32,7 +32,7 @@ def run_assessment(csv_path, model_path=r'D:\Projects\Senior-Capstone-Project\ML
     model.eval()
     
     try:
-        xgb_model = joblib.load(r'D:\Projects\Senior-Capstone-Project\ML Models\hybrid_xgb_model.joblib')
+        xgb_model = joblib.load(r'D:\Projects\Senior-Capstone-Project\hybrid_xgb_model.joblib')
         has_xgb = True
     except FileNotFoundError:
         print("Warning: hybrid_xgb_model.joblib not found. The model will fall back to base PyTorch outputs.")
@@ -83,8 +83,10 @@ def run_assessment(csv_path, model_path=r'D:\Projects\Senior-Capstone-Project\ML
     return pd.DataFrame(report)
 
 if __name__ == "__main__":
-    # Use test dataset file here
-    results_df = run_assessment(r'D:\Projects\Senior-Capstone-Project\Datasets\Scraping Data\combined_ielts_essays_fixed.csv')
-    print("\n MODEL ASSESSMENT REPORT")
+    # Uses the held-out test split saved by advanced_model.py — never seen during training.
+    results_df = run_assessment(
+        r'D:\Projects\Senior-Capstone-Project\test_split.csv'
+    )
+    print("\n MODEL ASSESSMENT REPORT (held-out test set)")
     print(results_df.to_string(index=False))
     

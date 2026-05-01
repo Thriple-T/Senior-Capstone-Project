@@ -7,6 +7,7 @@ import spacy
 from spellchecker import SpellChecker
 from transformers import BertModel, BertTokenizer
 from sentence_transformers import SentenceTransformer, util
+import textstat
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -56,7 +57,8 @@ def extract_advanced_features(essay, prompt):
     tokens = [t.text.lower() for t in doc if t.is_alpha]
     unique = set(tokens)
     ttr = len(unique) / len(tokens) if tokens else 0
-    misspelled = len(spell.unknown(tokens)) / len(tokens) if tokens else 0
+    misspelled_count = len(spell.unknown(tokens)) if tokens else 0
+    error_density = (misspelled_count / len(tokens)) * 100 if tokens else 0
     
     # Task Achievement: Prompt Similarity
     sim = 0.0
@@ -65,23 +67,37 @@ def extract_advanced_features(essay, prompt):
         p_emb = sim_model.encode(prompt, convert_to_numpy=True)
         sim = util.cos_sim(e_emb, p_emb).item()
         
-    return [float(var), float(dep_clauses), float(ttr), float(misspelled), float(sim)]
+    # Readability
+    flesch = textstat.flesch_reading_ease(essay)
+    
+    # Cohesion Markers
+    cohesion_words = {'however', 'furthermore', 'moreover', 'consequently', 'therefore', 'thus', 'hence', 'nevertheless', 'additionally', 'meanwhile'}
+    cohesion = sum(1 for t in tokens if t in cohesion_words)
+        
+    return [float(var), float(dep_clauses), float(ttr), float(misspelled_count), float(sim), float(flesch), float(cohesion), float(error_density)]
+
 import os
-from django.conf import settings
-from .llm_grader import get_llm_assessment
+try:
+    from django.conf import settings
+    # This triggers the error if settings aren't loaded
+    _ = settings.BASE_DIR 
+    BASE_PATH = settings.BASE_DIR
+except Exception:
+    # Fallback: Use the project root (up 2 levels from ielts_engine/analytics)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    BASE_PATH = os.path.abspath(os.path.join(current_dir, '..', '..'))
 
 def predict_ensemble(essay_text, prompt_text, 
                      pytorch_model_path=None,
                      xgb_model_path=None,
                      scaler_path=None):
     
-    # Use Django Base Dir dynamically if paths aren't provided
     if pytorch_model_path is None:
-        pytorch_model_path = os.path.join(settings.BASE_DIR, 'ielts_engine', 'analytics', 'sayardesk_model.pth')
+        pytorch_model_path = os.path.join(BASE_PATH, 'sayardesk_model.pth')
     if xgb_model_path is None:
-        xgb_model_path = os.path.join(settings.BASE_DIR, 'ielts_engine', 'analytics', 'hybrid_xgb_model.joblib')
+        xgb_model_path = os.path.join(BASE_PATH, 'hybrid_xgb_model.joblib')
     if scaler_path is None:
-        scaler_path = os.path.join(settings.BASE_DIR, 'ielts_engine', 'analytics', 'ielts_scaler.pkl')
+        scaler_path = os.path.join(BASE_PATH, 'ielts_scaler.pkl')
                      
     feats = extract_advanced_features(essay_text, prompt_text)
     try:
@@ -103,7 +119,7 @@ def predict_ensemble(essay_text, prompt_text,
     attention_mask = enc['attention_mask'].to(device)
 
     # Hybrid Stage (BERT Feature Extraction -> XGBoost Regressor)
-    pt_model = IELTSMultiTaskModel(n_extra_features=5).to(device)
+    pt_model = IELTSMultiTaskModel(n_extra_features=8).to(device)
     pt_model.load_state_dict(torch.load(pytorch_model_path, map_location=device))
     pt_model.eval()
 

@@ -33,14 +33,26 @@
 <div class="grid grid-cols-1" style="gap: 2rem;">
     <!-- Large Progress Chart -->
     <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h3>Score Progression</h3>
-            <div style="display: flex; gap: 1rem; font-size: 0.875rem;">
-                <span style="display: flex; align-items: center; gap: 0.5rem;">
-                    <span
-                        style="width: 12px; height: 12px; background-color: var(--accent-gold); border-radius: 2px;"></span>
-                    Overall Band
-                </span>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h3 style="margin-bottom: 0.5rem;">Score Progression</h3>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <!-- Task Filter -->
+                    <select id="taskFilter" class="form-select" style="width: auto; padding: 0.4rem 2rem 0.4rem 0.75rem; font-size: 0.875rem;">
+                        <option value="all">All Tasks</option>
+                        <option value="1">Task 1 Only</option>
+                        <option value="2">Task 2 Only</option>
+                    </select>
+                    
+                    <!-- View Mode -->
+                    <select id="viewMode" class="form-select" style="width: auto; padding: 0.4rem 2rem 0.4rem 0.75rem; font-size: 0.875rem;">
+                        <option value="overall">Overall Band Only</option>
+                        <option value="detailed">Detailed Criteria</option>
+                    </select>
+                </div>
+            </div>
+            <div id="chartLegend" style="display: flex; gap: 1rem; font-size: 0.875rem; flex-wrap: wrap; justify-content: flex-end; max-width: 300px;">
+                <!-- Dynamically populated by JS -->
             </div>
         </div>
         <div style="height: 400px; width: 100%;">
@@ -97,63 +109,171 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const ctx = document.getElementById('progressChart').getContext('2d');
-
-        const data = {{ progress_data_json|safe }};
-    const labels = data.map(item => item.date);
-    const scores = data.map(item => item.score);
-
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Overall Band',
-                data: scores,
-                borderColor: '#FFD700',
-                backgroundColor: 'rgba(255, 215, 0, 0.1)',
-                borderWidth: 3,
-                pointBackgroundColor: '#FFD700',
-                pointRadius: 6,
-                pointHoverRadius: 8,
-                tension: 0.3,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: false,
-                    min: 0,
-                    max: 9,
-                    grid: { color: '#334155' },
-                    ticks: { color: '#94a3b8', stepSize: 0.5 }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#94a3b8' }
-                }
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#1e293b',
-                    titleColor: '#FFD700',
-                    bodyColor: '#f1f5f9',
-                    borderColor: '#334155',
-                    borderWidth: 1,
-                    padding: 12,
-                    displayColors: false,
-                    callbacks: {
-                        label: function (context) {
-                            return `Band Score: ${context.parsed.y}`;
-                        }
-                    }
-                }
+        const rawData = {{ progress_data_json|safe }};
+        let chartInstance = null;
+        
+        const taskFilter = document.getElementById('taskFilter');
+        const viewMode = document.getElementById('viewMode');
+        const legendContainer = document.getElementById('chartLegend');
+        
+        const colors = {
+            overall: '#FFD700',
+            ta: '#3b82f6', // blue
+            cc: '#10b981', // green
+            lr: '#a855f7', // purple
+            gra: '#ef4444' // red
+        };
+        
+        function updateChart() {
+            const task = taskFilter.value;
+            const mode = viewMode.value;
+            
+            // Filter data
+            let filteredData = rawData;
+            if (task !== 'all') {
+                filteredData = rawData.filter(d => String(d.task) === task);
             }
+            
+            const labels = filteredData.map(d => d.date);
+            
+            let datasets = [];
+            let legendHTML = '';
+            
+            if (mode === 'overall') {
+                datasets.push({
+                    label: 'Overall Band',
+                    data: filteredData.map(d => d.score),
+                    borderColor: colors.overall,
+                    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: colors.overall,
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    tension: 0.3,
+                    fill: true
+                });
+                legendHTML = `<span style="display: flex; align-items: center; gap: 0.5rem;"><span style="width: 12px; height: 12px; background-color: ${colors.overall}; border-radius: 2px;"></span>Overall Band</span>`;
+            } else {
+                datasets.push({
+                    label: 'Overall Band',
+                    data: filteredData.map(d => d.score),
+                    borderColor: colors.overall,
+                    backgroundColor: 'transparent',
+                    borderWidth: 4,
+                    pointBackgroundColor: colors.overall,
+                    pointRadius: 5,
+                    tension: 0.3,
+                    borderDash: [5, 5]
+                });
+                datasets.push({
+                    label: 'Task Achievement',
+                    data: filteredData.map(d => d.ta_score),
+                    borderColor: colors.ta,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    pointBackgroundColor: colors.ta,
+                    pointRadius: 4,
+                    tension: 0.3
+                });
+                datasets.push({
+                    label: 'Coherence & Cohesion',
+                    data: filteredData.map(d => d.cc_score),
+                    borderColor: colors.cc,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    pointBackgroundColor: colors.cc,
+                    pointRadius: 4,
+                    tension: 0.3
+                });
+                datasets.push({
+                    label: 'Lexical Resource',
+                    data: filteredData.map(d => d.lr_score),
+                    borderColor: colors.lr,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    pointBackgroundColor: colors.lr,
+                    pointRadius: 4,
+                    tension: 0.3
+                });
+                datasets.push({
+                    label: 'Grammatical Range',
+                    data: filteredData.map(d => d.gra_score),
+                    borderColor: colors.gra,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    pointBackgroundColor: colors.gra,
+                    pointRadius: 4,
+                    tension: 0.3
+                });
+                
+                legendHTML = `
+                    <span style="display: flex; align-items: center; gap: 0.5rem;"><span style="width: 12px; height: 12px; background-color: ${colors.overall}; border-radius: 2px;"></span>Overall</span>
+                    <span style="display: flex; align-items: center; gap: 0.5rem;"><span style="width: 12px; height: 12px; background-color: ${colors.ta}; border-radius: 2px;"></span>TA</span>
+                    <span style="display: flex; align-items: center; gap: 0.5rem;"><span style="width: 12px; height: 12px; background-color: ${colors.cc}; border-radius: 2px;"></span>CC</span>
+                    <span style="display: flex; align-items: center; gap: 0.5rem;"><span style="width: 12px; height: 12px; background-color: ${colors.lr}; border-radius: 2px;"></span>LR</span>
+                    <span style="display: flex; align-items: center; gap: 0.5rem;"><span style="width: 12px; height: 12px; background-color: ${colors.gra}; border-radius: 2px;"></span>GRA</span>
+                `;
+            }
+            
+            legendContainer.innerHTML = legendHTML;
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 0,
+                            max: 9,
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8', stepSize: 0.5 }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            titleColor: '#f1f5f9',
+                            bodyColor: '#cbd5e1',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            padding: 12,
+                            mode: mode === 'detailed' ? 'index' : 'nearest',
+                            intersect: false,
+                            callbacks: {
+                                label: function (context) {
+                                    return `${context.dataset.label}: ${context.parsed.y}`;
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                }
+            });
         }
-    });
+        
+        taskFilter.addEventListener('change', updateChart);
+        viewMode.addEventListener('change', updateChart);
+        
+        // Initial draw
+        updateChart();
     });
 </script>
 {% endblock %}

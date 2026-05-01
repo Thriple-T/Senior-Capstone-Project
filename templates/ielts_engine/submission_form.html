@@ -13,9 +13,11 @@
 
             <div class="grid grid-cols-2">
                 <div class="form-group">
-                    <label class="form-label" for="id_student_identifier">Student Name or ID</label>
-                    <input type="text" name="student_identifier" id="id_student_identifier" class="form-control"
-                        placeholder="Enter Student Name or ID..." required>
+                    <label class="form-label" for="id_student">Student</label>
+                    {{ form.student }}
+                    <small style="display: block; margin-top: 0.35rem; font-size: 0.8rem; color: var(--text-muted);">
+                        Don't see the student? <a href="{% url 'student_add' %}" style="color: var(--accent-gold); text-decoration: none;">Add a new one →</a>
+                    </small>
                 </div>
 
                 <div class="form-group">

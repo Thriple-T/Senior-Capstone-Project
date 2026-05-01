@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Essay, Evaluation, Student
-from .forms import EssaySubmissionForm
+from .forms import EssaySubmissionForm, StudentForm
+from django.db.models import Count, Q, Max, Subquery, OuterRef
 import io
 import json
 import pypdf
@@ -38,24 +39,7 @@ def submit_essay(request):
         
         if form.is_valid():
             essay = form.save(commit=False)
-            
-            # Handle Student Lookup or Creation by identifier (Name or ID)
-            identifier = form.cleaned_data['student_identifier']
-            student = None
-            
-            # Try lookup by ID first if numeric
-            if identifier.isdigit():
-                student = Student.objects.filter(id=int(identifier)).first()
-            
-            # Fallback to lookup by Name
-            if not student:
-                student = Student.objects.filter(name__iexact=identifier).first()
-            
-            # Create if not found (Simple implementation)
-            if not student:
-                student = Student.objects.create(name=identifier)
-            
-            essay.student = student
+            essay.student = form.cleaned_data['student']
             
             # Handle uploaded file extraction
             uploaded_file = request.FILES.get('uploaded_file')
@@ -148,10 +132,13 @@ def submit_override(request, essay_id):
         )
         
         # Update scores from post data
-        evaluation.task_achievement = request.POST.get('task_achievement')
-        evaluation.coherence_cohesion = request.POST.get('coherence_cohesion')
-        evaluation.lexical_resource = request.POST.get('lexical_resource')
-        evaluation.grammar_accuracy = request.POST.get('grammar_accuracy')
+        def parse_score(val):
+            return float(val) if val and str(val).strip() else None
+
+        evaluation.task_achievement = parse_score(request.POST.get('task_achievement'))
+        evaluation.coherence_cohesion = parse_score(request.POST.get('coherence_cohesion'))
+        evaluation.lexical_resource = parse_score(request.POST.get('lexical_resource'))
+        evaluation.grammar_accuracy = parse_score(request.POST.get('grammar_accuracy'))
         evaluation.feedback_comments = request.POST.get('feedback_comments', '')
         
         # Re-calculate overall band (handled in model save)
@@ -174,6 +161,10 @@ def student_progress(request, student_id):
             progress_data.append({
                 'date': essay.submission_date.strftime('%Y-%m-%d'),
                 'score': float(eval.overall_band),
+                'ta_score': float(eval.task_achievement) if eval.task_achievement else None,
+                'cc_score': float(eval.coherence_cohesion) if eval.coherence_cohesion else None,
+                'lr_score': float(eval.lexical_resource) if eval.lexical_resource else None,
+                'gra_score': float(eval.grammar_accuracy) if eval.grammar_accuracy else None,
                 'task': essay.task_type,
                 'essay_id': essay.id
             })
@@ -184,3 +175,86 @@ def student_progress(request, student_id):
         'progress_data_json': json.dumps(progress_data),
     }
     return render(request, 'ielts_engine/student_progress.html', context)
+
+# ============================================================
+# Student CRUD Views
+# ============================================================
+
+def student_list(request):
+    search_query = request.GET.get('q', '').strip()
+    
+    students = Student.objects.all().order_by('-enrollment_date')
+    
+    if search_query:
+        students = students.filter(
+            Q(name__icontains=search_query) |
+            Q(student_id__icontains=search_query) |
+            Q(email__icontains=search_query)
+        )
+    
+    # Annotate each student with essay count and latest overall band
+    students = students.annotate(
+        essay_count=Count('essays')
+    )
+    
+    # Build student data with latest score
+    student_data = []
+    for student in students:
+        latest_eval = Evaluation.objects.filter(
+            essay__student=student
+        ).order_by('-created_at').first()
+        
+        latest_score = float(latest_eval.overall_band) if latest_eval and latest_eval.overall_band else None
+        
+        student_data.append({
+            'student': student,
+            'essay_count': student.essay_count,
+            'latest_score': latest_score,
+        })
+    
+    context = {
+        'student_data': student_data,
+        'search_query': search_query,
+    }
+    return render(request, 'ielts_engine/student_list.html', context)
+
+def student_add(request):
+    if request.method == 'POST':
+        form = StudentForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('student_list')
+    else:
+        form = StudentForm()
+    
+    return render(request, 'ielts_engine/student_form.html', {
+        'form': form,
+        'title': 'Add New Student',
+        'submit_label': 'Create Student',
+    })
+
+def student_edit(request, student_id):
+    student = get_object_or_404(Student, id=student_id)
+    
+    if request.method == 'POST':
+        form = StudentForm(request.POST, instance=student)
+        if form.is_valid():
+            form.save()
+            return redirect('student_list')
+    else:
+        form = StudentForm(instance=student)
+    
+    return render(request, 'ielts_engine/student_form.html', {
+        'form': form,
+        'student': student,
+        'title': f'Edit Student — {student.student_id}',
+        'submit_label': 'Save Changes',
+    })
+
+def student_delete(request, student_id):
+    student = get_object_or_404(Student, id=student_id)
+    if request.method == 'POST':
+        student.delete()
+        return redirect('student_list')
+    # If GET, redirect back to list (shouldn't happen via UI)
+    return redirect('student_list')

@@ -1,34 +1,9 @@
-name: Sync to HuggingFace Space
+- name: Install HuggingFace Hub + Xet
+  run: pip install -U huggingface_hub hf_xet
 
-on:
-  push:
-    branches: [main]
-
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Remove files HF does not accept
-        run: |
-          rm -rf "Literature Review/"
-          rm -rf "Report/"
-          rm -f ielts_engine/analytics/hybrid_xgb_model.joblib
-          find . -name "*.pt" -delete
-          find . -name "*.bin" -delete
-          find . -name "*.pkl" -delete
-          find . -name "*.docx" -delete
-          find . -name "*.pdf" -delete
-
-      - name: Push clean snapshot to HuggingFace
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          git config user.email "action@github.com"
-          git config user.name "GitHub Action"
-          git remote add hf https://ThripleT1912:$HF_TOKEN@huggingface.co/spaces/ThripleT1912/SayarDesk-IELTS-Intelligence
-          git checkout --orphan hf-deploy
-          git add .
-          git commit -m "deploy to HuggingFace Space"
-          git push hf hf-deploy:main --force
+- name: Upload to HuggingFace Space via CLI
+  env:
+    HF_TOKEN: ${{ secrets.HF_TOKEN }}
+  run: |
+    huggingface-cli login --token $HF_TOKEN
+    huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence . . --repo-type space

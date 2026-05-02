@@ -1,9 +1,25 @@
-- name: Install HuggingFace Hub + Xet
-  run: pip install -U huggingface_hub hf_xet
+name: Sync to HuggingFace Space
 
-- name: Upload to HuggingFace Space via CLI
-  env:
-    HF_TOKEN: ${{ secrets.HF_TOKEN }}
-  run: |
-    huggingface-cli login --token $HF_TOKEN
-    huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence . . --repo-type space
+on:
+  push:
+    branches: [main]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install HuggingFace Hub + Xet
+        run: pip install -U huggingface_hub hf_xet
+
+      - name: Upload only app code to HuggingFace
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          huggingface-cli login --token $HF_TOKEN
+          huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence ./ielts_engine ielts_engine --repo-type space
+          huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence ./templates templates --repo-type space
+          huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence ./static static --repo-type space
+          huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence ./manage.py manage.py --repo-type space
+          huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence ./requirements.txt requirements.txt --repo-type space

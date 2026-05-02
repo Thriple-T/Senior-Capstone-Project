@@ -176,9 +176,7 @@ def student_progress(request, student_id):
     }
     return render(request, 'ielts_engine/student_progress.html', context)
 
-# ============================================================
 # Student CRUD Views
-# ============================================================
 
 def student_list(request):
     search_query = request.GET.get('q', '').strip()

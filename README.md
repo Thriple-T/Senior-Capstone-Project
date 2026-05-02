@@ -1,3 +1,12 @@
+---
+title: SayarDesk IELTS Intelligence
+emoji: 🎓
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+---
+
 # SayarDesk IELTS Intelligence 🎓
 
 > AI-powered IELTS Writing Task 1 & 2 essay scorer — built as a senior capstone project at Parami University.

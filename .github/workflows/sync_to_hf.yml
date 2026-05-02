@@ -1,21 +1,31 @@
-name: Sync to Hugging Face hub
+name: Sync to HuggingFace Space
+
 on:
   push:
     branches: [main]
-  workflow_dispatch:
 
 jobs:
-  sync-to-hub:
+  sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4 # Updated to v4 to fix the Node.js warning
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          lfs: true
 
-      - name: Push to hub
+      - name: Remove large binary files before pushing to HF
+        run: |
+          find . -name "*.pt" -delete
+          find . -name "*.bin" -delete
+          find . -name "*.pkl" -delete
+          find . -name "*.joblib" -delete
+          find . -name "*.csv" -delete
+          find . -name "*.pdf" -delete
+
+      - name: Push to HuggingFace Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # Replace 'username' and 'spacename' with your actual HF info
-          git push --force https://YOUR_HF_USERNAME:$HF_TOKEN@huggingface.co/spaces/ThripleT1912/SayarDesk-IELTS-Intelligence main
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git remote add hf https://ThripleT1912:$HF_TOKEN@huggingface.co/spaces/ThripleT1912/SayarDesk-IELTS-Intelligence
+          git push hf main --force

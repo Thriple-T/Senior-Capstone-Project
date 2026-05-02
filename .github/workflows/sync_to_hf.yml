@@ -9,23 +9,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
 
-      - name: Remove large binary files before pushing to HF
+      - name: Remove files HF does not accept
         run: |
+          rm -rf "Literature Review/"
+          rm -rf "Report/"
+          rm -f ielts_engine/analytics/hybrid_xgb_model.joblib
           find . -name "*.pt" -delete
           find . -name "*.bin" -delete
           find . -name "*.pkl" -delete
-          find . -name "*.joblib" -delete
-          find . -name "*.csv" -delete
+          find . -name "*.docx" -delete
           find . -name "*.pdf" -delete
 
-      - name: Push to HuggingFace Space
+      - name: Push clean snapshot to HuggingFace
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
           git remote add hf https://ThripleT1912:$HF_TOKEN@huggingface.co/spaces/ThripleT1912/SayarDesk-IELTS-Intelligence
-          git push hf main --force
+          git checkout --orphan hf-deploy
+          git add .
+          git commit -m "deploy to HuggingFace Space"
+          git push hf hf-deploy:main --force

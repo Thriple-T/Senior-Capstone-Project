@@ -9,6 +9,7 @@ from transformers import BertModel, BertTokenizer
 from sentence_transformers import SentenceTransformer, util
 import textstat
 import warnings
+from llm_grader import get_llm_assessment
 
 warnings.filterwarnings('ignore')
 
@@ -93,7 +94,7 @@ def predict_ensemble(essay_text, prompt_text,
                      scaler_path=None):
     
     if pytorch_model_path is None:
-        pytorch_model_path = os.path.join(BASE_PATH, 'sayardesk_model.pth')
+        pytorch_model_path = os.path.join(BASE_PATH, 'sayardesk_model_best.pth')
     if xgb_model_path is None:
         xgb_model_path = os.path.join(BASE_PATH, 'hybrid_xgb_model.joblib')
     if scaler_path is None:
@@ -126,7 +127,7 @@ def predict_ensemble(essay_text, prompt_text,
     with torch.no_grad():
         _, hybrid_feats = pt_model(input_ids, attention_mask, feats_tensor)
     
-    hybrid_vector = hybrid_feats.cpu().numpy() # Shape: (1, 773)
+    hybrid_vector = hybrid_feats.cpu().numpy() # Shape: (1, 776)
     
     # Load Hybrid Model
     xgb_model = joblib.load(xgb_model_path)
@@ -148,9 +149,9 @@ def predict_ensemble(essay_text, prompt_text,
                 all_shap_values.append(explainer.shap_values(hybrid_vector))
             
             # Average the SHAP values across all 4 estimators
-            # shap_values from each estimator is usually (1, 773)
-            # all_shap_values will be shape (4, 1, 773)
-            avg_shap = np.mean(all_shap_values, axis=0) # shape (1, 773)
+            # shap_values from each estimator is usually (1, 776)
+            # all_shap_values will be shape (4, 1, 776)
+            avg_shap = np.mean(all_shap_values, axis=0) # shape (1, 776)
             
             if len(avg_shap.shape) == 3:
                 sv_signed = avg_shap[0].mean(axis=1)
@@ -215,10 +216,10 @@ def predict_ensemble(essay_text, prompt_text,
         # Custom Weights: (Hybrid_Weight, LLM_Weight)
         # XGBoost is better at Grammar/Lexical word-counts. LLM is better at Meaning/Task.
         weights = {
-            "Task_Achievement": (0.3, 0.7),
-            "Coherence_Cohesion": (0.4, 0.6),
-            "Lexical_Resource": (0.7, 0.3),
-            "Grammar_Range": (0.8, 0.2)
+            "Task_Achievement":   (0.8, 0.2),  # BERT R²=0.661, strong
+            "Coherence_Cohesion": (0.7, 0.3),  # BERT R²=0.652, strong
+            "Lexical_Resource":   (0.5, 0.5),  # BERT R²=0.551, roughly equal
+            "Grammar_Range":      (0.2, 0.8),  # BERT R²=0.356, trust XGBoost more
         }
         
         for crit, (w_hybrid, w_llm) in weights.items():

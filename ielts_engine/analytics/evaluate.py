@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from transformers import BertTokenizer
 import joblib
 
-def run_assessment(csv_path, model_path=r'D:\Projects\Senior-Capstone-Project\sayardesk_model.pth'):
+def run_assessment(csv_path, model_path=r'D:\Projects\Senior-Capstone-Project\sayardesk_model_best.pth'):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     df = pd.read_csv(csv_path).dropna()
     
@@ -27,7 +27,7 @@ def run_assessment(csv_path, model_path=r'D:\Projects\Senior-Capstone-Project\sa
     dataset = EssayDataset(df['Essay_Text'].values, feats, targets, tok)
     loader = DataLoader(dataset, batch_size=8, shuffle=False)
     
-    model = IELTSMultiTaskModel(n_extra_features=5).to(device)
+    model = IELTSMultiTaskModel(n_extra_features=8).to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
     

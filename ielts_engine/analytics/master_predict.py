@@ -9,7 +9,7 @@ from transformers import BertModel, BertTokenizer
 from sentence_transformers import SentenceTransformer, util
 import textstat
 import warnings
-from llm_grader import get_llm_assessment
+from .llm_grader import get_llm_assessment
 
 warnings.filterwarnings('ignore')
 

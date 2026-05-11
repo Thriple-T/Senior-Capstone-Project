@@ -9,28 +9,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          lfs: true
 
-      - name: Install HuggingFace Hub + Xet
-        run: pip install -U huggingface_hub hf_xet
+      - name: Install HuggingFace Hub
+        run: pip install -U huggingface_hub
 
       - name: Upload app code and artifacts to HuggingFace
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          huggingface-cli login --token $HF_TOKEN
+          hf auth login --token $HF_TOKEN
 
           # Core Django project config
-          huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence ./sayardesk sayardesk --repo-type space
-          huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence ./ielts_engine ielts_engine --repo-type space
-          huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence ./templates templates --repo-type space
-          huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence ./static static --repo-type space
+          hf upload ThripleT1912/SayarDesk-IELTS-Intelligence ./sayardesk sayardesk --repo-type space
+          hf upload ThripleT1912/SayarDesk-IELTS-Intelligence ./ielts_engine ielts_engine --repo-type space
+          hf upload ThripleT1912/SayarDesk-IELTS-Intelligence ./templates templates --repo-type space
+          hf upload ThripleT1912/SayarDesk-IELTS-Intelligence ./static static --repo-type space
 
           # Entry points and build config
-          huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence ./manage.py manage.py --repo-type space
-          huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence ./Dockerfile Dockerfile --repo-type space
-          huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence ./requirements.txt requirements.txt --repo-type space
+          hf upload ThripleT1912/SayarDesk-IELTS-Intelligence ./manage.py manage.py --repo-type space
+          hf upload ThripleT1912/SayarDesk-IELTS-Intelligence ./Dockerfile Dockerfile --repo-type space
+          hf upload ThripleT1912/SayarDesk-IELTS-Intelligence ./requirements.txt requirements.txt --repo-type space
 
           # Model artifacts (tracked by Git LFS)
-          huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence ./sayardesk_model.pth sayardesk_model.pth --repo-type space
-          huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence ./hybrid_xgb_model.joblib hybrid_xgb_model.joblib --repo-type space
-          huggingface-cli upload ThripleT1912/SayarDesk-IELTS-Intelligence ./ielts_scaler.pkl ielts_scaler.pkl --repo-type space
+          hf upload ThripleT1912/SayarDesk-IELTS-Intelligence ./sayardesk_model.pth sayardesk_model.pth --repo-type space
+          hf upload ThripleT1912/SayarDesk-IELTS-Intelligence ./hybrid_xgb_model.joblib hybrid_xgb_model.joblib --repo-type space
+          hf upload ThripleT1912/SayarDesk-IELTS-Intelligence ./ielts_scaler.pkl ielts_scaler.pkl --repo-type space

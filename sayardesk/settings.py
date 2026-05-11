@@ -34,6 +34,11 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.huggingface.co',
 ]
 
+# HuggingFace runs a reverse proxy that terminates SSL.
+# Django needs to trust the proxy's forwarded headers to detect HTTPS correctly.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
 
 # Application definition
 

@@ -28,6 +28,12 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=lambda v: [s.strip() for s in v.split(',')])
 
+# HuggingFace Spaces embeds apps in an iframe from huggingface.co
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.hf.space',
+    'https://*.huggingface.co',
+]
+
 
 # Application definition
 
@@ -140,4 +146,8 @@ STORAGES = {
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# HuggingFace Spaces displays the app inside an iframe.
+# Django's default X-Frame-Options: DENY blocks this entirely.
+X_FRAME_OPTIONS = 'ALLOWALL'
 

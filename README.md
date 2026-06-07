@@ -1,6 +1,5 @@
 ---
 title: SayarDesk IELTS Intelligence
-emoji: 🎓
 colorFrom: blue
 colorTo: green
 sdk: docker
@@ -98,8 +97,8 @@ This project was developed as a **senior capstone thesis** at Parami University,
 
 ## Author
 
-**Thomas** — Parami University, Class of 2026
+**Thant Thaw Tun** — Parami University, Class of 2026
 
 ---
 
-*Built with 🤖 BERT · XGBoost · Qwen3 · Django*
+*Built with BERT · XGBoost · Qwen3 · Django*
